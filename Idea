@@ -1,0 +1,230 @@
+
+
+# **Terrain Engine – Full Technical Reconstruction To-Do Document**
+
+## **Ziel**
+
+Ein **node-basiertes, GPU-beschleunigtes Terrain-Synthese-System**, das:
+
+* Realistische, hochauflösende Landschaften erzeugen kann (bis 16k+ tiled workflow).
+* **Nicht-destruktive** Workflows unterstützt (Graph + Caching).
+* **Physikalisch inspiriertes Erosionsmodell** enthält.
+* **Material- & Splatmap-Ausgabe** für moderne 3D-Engines erzeugt (Unity/Unreal).
+* Modul- & Plugin-freundlich aufgebaut ist.
+* **Cross-Platform** (Windows, Linux, macOS möglich) ist.
+
+---
+
+## **Technologie- und Architektur-Vorgaben**
+
+* Sprache: **C++20**
+* GPU API: **Vulkan** (Pflicht – für Compute Shader, Cross-Platform)
+* Shader: **GLSL Compute → SPIR-V**
+* UI: **ImGui (Docking Branch) → später eigener Skin möglich**
+* Parallelisierung: **std::execution** oder **Intel TBB**
+* Heightfield-Speicherformat: **float32 primary, float16 preview mode**
+* Datei-Handling:
+
+  * **GDAL** (DEM, GeoTIFF)
+  * **tinyexr** (EXR)
+  * **stb_image / stb_image_write** (PNG/TIF Vorschauen)
+* Dokumentation:
+
+  * Code: **Doxygen**
+  * User Docs: **mkdocs-material**
+
+---
+
+## **High-Level Modulstruktur**
+
+```
+/Engine
+  /Core              (logging, memory, profiling)
+  /GPU               (Vulkan backend, compute pipelines, buffers)
+  /Terrain           (data model, masks, multires pyramids)
+  /Nodes             (node definitions, registry, execution planner)
+  /Erosion           (hydraulic/thermal/transport solvers)
+  /Texture           (splatmaps, normals, AO, curvature)
+  /IO                (import/export formats)
+  /Scripting         (pybind11 Python API)
+  /Presets           (JSON presets + generator macros)
+  /UI                (graph editor, viewport, property panels)
+  /CLI               (batch generation mode)
+```
+
+---
+
+## **Detaillierte To-Do Liste**
+
+### **1. Projekt Setup**
+
+* [ ] CMake multi-target workspace erstellen.
+* [ ] Platform Abstraction Layer für Filesystem + Threading definieren.
+* [ ] Logging-System implementieren (Levels: Debug/Info/Warning/Error).
+* [ ] Interner Profiler + GPU timestamp queries.
+
+---
+
+### **2. GPU Backend (Vulkan)**
+
+* [ ] Vulkan Instance + PhysicalDevice + Compute Queue auswählen.
+* [ ] GPU Memory Management via **Vulkan Memory Allocator (VMA)**.
+* [ ] Global Descriptor Pool + Dynamic Descriptor Sets.
+* [ ] Shader Hot-Reloading Pipeline (GLSL → SPIR-V → Pipeline Objects).
+* [ ] Persistent GPU Buffers:
+
+  * Heightfield storage textures
+  * Mask layers
+  * Normal + Flow + Sediment layers
+* [ ] GPU → CPU Staging Buffers für Preview.
+
+---
+
+### **3. Terrain Data Model**
+
+* [ ] Core Heightfield = 2D float array (GPU+CPU mirror optional).
+* [ ] Multiresolution Height Pyramid (MIP chain) für Live-Preview.
+* [ ] Dynamische Attachments:
+
+  * Slope map
+  * Curvature map
+  * Flow map
+  * Sediment concentration
+* [ ] Tiling Mode für 16k+ Terrains:
+
+  * Tiles = 1024–4096 blocks
+  * Compute scheduling tileweise
+
+---
+
+### **4. Node-Graph System**
+
+* [ ] Node Registry + Reflection (Name, Category, Inputs, Outputs).
+* [ ] Graph Execution Planner:
+
+  * automatisches Topologisches Sortieren
+  * Dirty propagation (nur veränderte Teilgraphen neu berechnen)
+* [ ] GPU Resource Reuse Cache (kein unnötiges Realloc).
+* [ ] Node Preview Output (low-res Mip Level).
+
+---
+
+### **5. Generator Nodes**
+
+* [ ] Noise Nodes:
+
+  * Perlin
+  * Simplex
+  * Ridged
+  * Billow
+  * FBM
+  * Hybrid Multifractal
+* [ ] Shape Nodes:
+
+  * Gradient, Dome, Ridge, Canyon, Dunes
+* [ ] Pattern Nodes:
+
+  * Voronoi (Distance, Cell, Border)
+  * Cellular fracture noise
+
+---
+
+### **6. Modifier / Filter Nodes**
+
+* [ ] Combine (Add, Subtract, Multiply, Max, Min, Mix).
+* [ ] Remap (min/max clamp + bias/gain curve).
+* [ ] Blur (Gaussian/Box) – GPU separable filter.
+* [ ] Sharpen/Detail enhance.
+* [ ] Mask-by:
+
+  * Height threshold
+  * Slope
+  * Curvature
+  * Noise pattern
+
+---
+
+### **7. Erosion & Geological Simulation**
+
+* **Hydraulic Erosion**
+
+  * [ ] GPU height + velocity + sediment + water layers
+  * [ ] Evaporation + Transport + Deposition cycles
+* **Thermal Erosion**
+
+  * [ ] Talus angle relaxation
+* **Sediment Flow**
+
+  * [ ] River channel reinforcement optional pass
+* **Weathering**
+
+  * [ ] Rock → gravel → soil breakdown simplistic model
+
+(Compute kernels must be **deterministic** for stable undo/redo.)
+
+---
+
+### **8. Texture & Splatmap System**
+
+* [ ] Slope-based rock mask.
+* [ ] Height-based snow mask.
+* [ ] Curvature-based dirt accumulation.
+* [ ] AO generator via curvature + multi-scale sampling.
+* [ ] Normal Map Generator (GPU).
+* [ ] Export Formats:
+
+  * 4-Channel Splatmap (R/G/B/A = material weights)
+  * Albedo macro texture suggestions
+  * Normal + AO + Roughness maps
+
+---
+
+### **9. UI**
+
+* [ ] Node Graph Editor (ImGui Docking, bezier wires, context menu).
+* [ ] 3D Viewport:
+
+  * Orbit, Pan, Zoom
+  * PBR shading (sky light + directional)
+* [ ] Real-time res-downscaled preview.
+* [ ] Node Property Inspector (auto-generated UI from node metadata).
+* [ ] Preset Browser.
+
+---
+
+### **10. Import / Export**
+
+* [ ] GeoTIFF / DEM via GDAL.
+* [ ] RAW 16-bit und RAW 32-bit.
+* [ ] EXR 32-bit.
+* [ ] PNG/TIF Preview Export.
+* [ ] Export to Unreal/Unity landscape format.
+
+---
+
+### **11. Performance Features**
+
+* [ ] Shader parameter auto-packing to minimize bind overhead.
+* [ ] GPU Command Batching für mehrere Node-Auswertungen.
+* [ ] Caching: Node result hashes → skip recompute.
+* [ ] Multi-GPU optional later.
+
+---
+
+### **12. Presets & Automation**
+
+* [ ] JSON-basierte Preset-Definitionen (Biome / Terrain Styles).
+* [ ] "Macro Nodes" = verschachtelte Node-Subgraphs.
+* [ ] Batch Mode (CLI) für automatisierte Welterstellung.
+* [ ] Python Scripting API (pybind11).
+
+---
+
+## **Final Notes for the KI**
+
+* Der Workflow ist immer:
+  **Nodewerte berechnen → Zwischenergebnisse cachen → Preview niedrig auflösen → Final Output hochauflösend rendern.**
+* Jede Node ist eine **GPU-Compute Pipeline Bound Operation** mit definierter Ein-/Ausgabe.
+* UI kann später ersetzt werden – Architektur muss UI-agnostisch bleiben.
+
+
