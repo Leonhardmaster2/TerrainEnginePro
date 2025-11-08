@@ -6,6 +6,8 @@
 #include "Rendering/TerrainMesh.h"
 #include "Terrain/TerrainGenerator.h"
 #include "Terrain/Heightfield.h"
+#include "NodeGraphEditor.h"
+#include "MountainPresets.h"
 
 namespace Terrain {
 
@@ -21,6 +23,7 @@ struct EditorState {
     bool showGrid = true;
     bool showStats = true;
     bool showParameters = true;
+    bool showNodeGraph = true;
 
     // Export settings
     char exportPath[256] = "terrain";
@@ -29,6 +32,9 @@ struct EditorState {
     // Camera settings
     float32 cameraSpeed = 1.0f;
     float32 cameraSensitivity = 0.5f;
+
+    // Node graph mode
+    bool useNodeGraph = false;
 };
 
 class TerrainEditor {
@@ -61,6 +67,7 @@ private:
     Unique<TerrainGenerator> m_Generator;
     Unique<Shader> m_TerrainShader;
     Unique<Camera> m_Camera;
+    Unique<NodeGraphEditor> m_NodeGraphEditor;
 
     // Current terrain data
     Unique<Heightfield> m_CurrentHeightfield;

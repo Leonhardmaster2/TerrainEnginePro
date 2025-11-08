@@ -71,6 +71,13 @@ bool TerrainEditor::Initialize() {
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+    // Initialize node graph editor
+    m_NodeGraphEditor = MakeUnique<NodeGraphEditor>();
+    if (!m_NodeGraphEditor->Initialize()) {
+        LOG_ERROR("Failed to initialize node graph editor");
+        return false;
+    }
+
     // Generate initial terrain
     GenerateTerrain();
 
@@ -121,12 +128,16 @@ void TerrainEditor::Render() {
     // Render panels
     RenderViewport3D();
 
-    if (m_State.showParameters) {
+    if (m_State.showParameters && !m_State.useNodeGraph) {
         RenderParametersPanel();
     }
 
     if (m_State.showStats) {
         RenderStatsPanel();
+    }
+
+    if (m_State.showNodeGraph) {
+        m_NodeGraphEditor->Render();
     }
 
     RenderExportPanel();
@@ -155,7 +166,15 @@ void TerrainEditor::RenderMenuBar() {
         if (ImGui::BeginMenu("View")) {
             ImGui::MenuItem("Parameters", nullptr, &m_State.showParameters);
             ImGui::MenuItem("Statistics", nullptr, &m_State.showStats);
+            ImGui::MenuItem("Node Graph", nullptr, &m_State.showNodeGraph);
             ImGui::MenuItem("Grid", nullptr, &m_State.showGrid);
+            ImGui::Separator();
+            if (ImGui::MenuItem("Use Node Graph", nullptr, &m_State.useNodeGraph)) {
+                if (m_State.useNodeGraph) {
+                    // Switch to node graph mode
+                    m_NeedsRegeneration = true;
+                }
+            }
             ImGui::Separator();
             if (ImGui::MenuItem("Reset Camera")) {
                 ResetCamera();
@@ -182,11 +201,88 @@ void TerrainEditor::RenderMenuBar() {
             ImGui::EndMenu();
         }
 
+        if (ImGui::BeginMenu("Presets")) {
+            ImGui::TextDisabled("Quick terrain generation");
+            ImGui::Separator();
+            if (ImGui::MenuItem("Alps Mountains")) {
+                m_State.useNodeGraph = true;
+                if (m_NodeGraphEditor) {
+                    MountainPresets::CreatePreset(m_NodeGraphEditor->GetGraph(), MountainPreset::Alps);
+                    m_NeedsRegeneration = true;
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Sharp peaks, deep valleys, glacial features (4,000-4,800m)");
+            }
+
+            if (ImGui::MenuItem("Appalachian Mountains")) {
+                m_State.useNodeGraph = true;
+                if (m_NodeGraphEditor) {
+                    MountainPresets::CreatePreset(m_NodeGraphEditor->GetGraph(), MountainPreset::Appalachians);
+                    m_NeedsRegeneration = true;
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Rolling ridges, weathered peaks (1,200-2,000m)");
+            }
+
+            if (ImGui::MenuItem("Himalayan Mountains")) {
+                m_State.useNodeGraph = true;
+                if (m_NodeGraphEditor) {
+                    MountainPresets::CreatePreset(m_NodeGraphEditor->GetGraph(), MountainPreset::Himalayas);
+                    m_NeedsRegeneration = true;
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Extreme jagged peaks, dramatic elevation (6,000-8,800m)");
+            }
+
+            if (ImGui::MenuItem("Rocky Mountains")) {
+                m_State.useNodeGraph = true;
+                if (m_NodeGraphEditor) {
+                    MountainPresets::CreatePreset(m_NodeGraphEditor->GetGraph(), MountainPreset::RockyMountains);
+                    m_NeedsRegeneration = true;
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Mixed terrain with sharp peaks and rolling hills (3,000-4,400m)");
+            }
+
+            if (ImGui::MenuItem("Andes Mountains")) {
+                m_State.useNodeGraph = true;
+                if (m_NodeGraphEditor) {
+                    MountainPresets::CreatePreset(m_NodeGraphEditor->GetGraph(), MountainPreset::Andes);
+                    m_NeedsRegeneration = true;
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Long volcanic ridges, high plateaus (4,000-6,900m)");
+            }
+
+            ImGui::EndMenu();
+        }
+
         if (ImGui::BeginMenu("Help")) {
             if (ImGui::MenuItem("About")) {
-                LOG_INFO("Terrain Engine Pro v0.3");
+                LOG_INFO("Terrain Engine Pro v0.5 - Realistic Terrain Editor");
             }
+            ImGui::Separator();
+            ImGui::TextDisabled("Features:");
+            ImGui::BulletText("19+ node types for terrain generation");
+            ImGui::BulletText("Hydraulic & thermal erosion");
+            ImGui::BulletText("5 realistic mountain presets");
+            ImGui::BulletText("Real-time 3D preview");
+            ImGui::BulletText("Export: PNG, RAW, OBJ");
             ImGui::EndMenu();
+        }
+
+        // Show generation status
+        if (m_IsGenerating) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Generating...");
+        } else if (m_GenerationTime > 0.0f) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Ready (%.1fms)", m_GenerationTime * 1000.0f);
         }
 
         ImGui::EndMainMenuBar();
@@ -445,12 +541,24 @@ void TerrainEditor::GenerateTerrain() {
 
     LOG_INFO("Generating terrain...");
 
-    // Generate heightfield
-    m_CurrentHeightfield = m_Generator->GeneratePerlin(
-        m_State.terrainWidth,
-        m_State.terrainHeight,
-        m_State.perlinParams
-    );
+    // Generate heightfield based on mode
+    if (m_State.useNodeGraph) {
+        // Execute node graph
+        if (m_NodeGraphEditor->ExecuteGraph()) {
+            m_CurrentHeightfield = m_NodeGraphEditor->GetResult();
+        } else {
+            LOG_ERROR("Failed to execute node graph");
+            m_IsGenerating = false;
+            return;
+        }
+    } else {
+        // Use simple Perlin generation
+        m_CurrentHeightfield = m_Generator->GeneratePerlin(
+            m_State.terrainWidth,
+            m_State.terrainHeight,
+            m_State.perlinParams
+        );
+    }
 
     if (!m_CurrentHeightfield) {
         LOG_ERROR("Failed to generate heightfield");
