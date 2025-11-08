@@ -8,9 +8,16 @@ namespace Terrain {
 NodeGraphEditor::NodeGraphEditor() {
     m_Graph = MakeUnique<NodeGraph>();
     m_Serializer = MakeUnique<GraphSerializer>();
+    m_RecentFiles = MakeUnique<RecentFilesManager>();
+
+    // Load recent files
+    m_RecentFiles->LoadFromFile("recent_files.txt");
 }
 
 NodeGraphEditor::~NodeGraphEditor() {
+    // Save recent files
+    m_RecentFiles->SaveToFile("recent_files.txt");
+
     ImNodes::DestroyContext();
 }
 
@@ -54,18 +61,56 @@ void NodeGraphEditor::Render() {
 void NodeGraphEditor::RenderMenuBar() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("Save Graph")) {
-                SaveGraph("terrain_graph.json");
-            }
-            if (ImGui::MenuItem("Load Graph")) {
-                LoadGraph("terrain_graph.json");
+            if (ImGui::MenuItem("New Graph", "Ctrl+N")) {
+                NewGraph();
             }
             ImGui::Separator();
-            if (ImGui::MenuItem("New Graph")) {
-                m_Graph->Clear();
-                CreateOutputNode();
-                m_GraphDirty = true;
+
+            if (ImGui::MenuItem("Open...", "Ctrl+O")) {
+                LoadGraphWithDialog();
             }
+
+            // Recent files submenu
+            if (ImGui::BeginMenu("Open Recent")) {
+                const auto& recentFiles = m_RecentFiles->GetRecentFiles();
+                if (recentFiles.empty()) {
+                    ImGui::MenuItem("(No recent files)", nullptr, false, false);
+                } else {
+                    for (const auto& filepath : recentFiles) {
+                        // Extract filename from path
+                        size_t lastSlash = filepath.find_last_of("/\\");
+                        String filename = (lastSlash != String::npos) ? filepath.substr(lastSlash + 1) : filepath;
+
+                        if (ImGui::MenuItem(filename.c_str())) {
+                            LoadGraph(filepath);
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("%s", filepath.c_str());
+                        }
+                    }
+
+                    ImGui::Separator();
+                    if (ImGui::MenuItem("Clear Recent Files")) {
+                        m_RecentFiles->ClearRecentFiles();
+                    }
+                }
+                ImGui::EndMenu();
+            }
+
+            ImGui::Separator();
+
+            if (ImGui::MenuItem("Save", "Ctrl+S")) {
+                if (m_CurrentFilePath.empty()) {
+                    SaveGraphAs();
+                } else {
+                    SaveGraph(m_CurrentFilePath);
+                }
+            }
+
+            if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S")) {
+                SaveGraphAs();
+            }
+
             ImGui::EndMenu();
         }
 
@@ -464,9 +509,25 @@ void NodeGraphEditor::SaveGraph(const String& filepath) {
     if (result.success) {
         m_CurrentFilePath = filepath;
         m_GraphDirty = false;
+        m_RecentFiles->AddRecentFile(filepath);
         LOG_INFO("Graph saved successfully to: %s", filepath.c_str());
     } else {
         LOG_ERROR("Failed to save graph: %s", result.errorMessage.c_str());
+    }
+}
+
+void NodeGraphEditor::SaveGraphAs() {
+    // Define file filters
+    std::vector<FileFilter> filters = {
+        {"Terrain Graph Files", "*.json"},
+        {"All Files", "*.*"}
+    };
+
+    // Show save dialog
+    auto result = FileDialog::SaveFile("Save Terrain Graph", filters, m_CurrentFilePath, "json");
+
+    if (result.success) {
+        SaveGraph(result.filepath);
     }
 }
 
@@ -478,6 +539,7 @@ void NodeGraphEditor::LoadGraph(const String& filepath) {
         m_CurrentFilePath = filepath;
         m_GraphDirty = false;
         m_SelectedNode = nullptr;
+        m_RecentFiles->AddRecentFile(filepath);
 
         // Find and set output node
         for (const auto& [id, node] : m_Graph->GetNodes()) {
@@ -491,6 +553,33 @@ void NodeGraphEditor::LoadGraph(const String& filepath) {
     } else {
         LOG_ERROR("Failed to load graph: %s", result.errorMessage.c_str());
     }
+}
+
+void NodeGraphEditor::LoadGraphWithDialog() {
+    // Define file filters
+    std::vector<FileFilter> filters = {
+        {"Terrain Graph Files", "*.json"},
+        {"All Files", "*.*"}
+    };
+
+    // Show open dialog
+    auto result = FileDialog::OpenFile("Open Terrain Graph", filters, m_CurrentFilePath);
+
+    if (result.success) {
+        LoadGraph(result.filepath);
+    }
+}
+
+void NodeGraphEditor::NewGraph() {
+    // TODO: Ask to save if dirty
+
+    m_Graph->Clear();
+    CreateOutputNode();
+    m_CurrentFilePath.clear();
+    m_GraphDirty = false;
+    m_SelectedNode = nullptr;
+
+    LOG_INFO("Created new graph");
 }
 
 } // namespace Terrain

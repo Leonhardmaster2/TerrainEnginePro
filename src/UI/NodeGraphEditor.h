@@ -8,6 +8,7 @@
 #include "Nodes/TextureNodes.h"
 #include "Nodes/MeshExportNodes.h"
 #include "Serialization/GraphSerializer.h"
+#include "FileDialog.h"
 #include "MountainPresets.h"
 
 namespace Terrain {
@@ -41,7 +42,10 @@ public:
 
     // Save/Load
     void SaveGraph(const String& filepath);
+    void SaveGraphAs();
     void LoadGraph(const String& filepath);
+    void LoadGraphWithDialog();
+    void NewGraph();
 
 private:
     void RenderMenuBar();
@@ -64,6 +68,7 @@ private:
 
     Unique<NodeGraph> m_Graph;
     Unique<GraphSerializer> m_Serializer;
+    Unique<RecentFilesManager> m_RecentFiles;
     NodeEditorState m_State;
 
     // UI state
@@ -72,6 +77,7 @@ private:
     bool m_AutoExecute = true;
     bool m_GraphDirty = false;
     String m_CurrentFilePath;
+    String m_UntitledGraphName = "Untitled";
 };
 
 } // namespace Terrain
