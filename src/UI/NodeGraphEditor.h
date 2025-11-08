@@ -9,6 +9,8 @@
 #include "Nodes/MeshExportNodes.h"
 #include "Serialization/GraphSerializer.h"
 #include "FileDialog.h"
+#include "UITheme.h"
+#include "StatusBar.h"
 #include "MountainPresets.h"
 
 namespace Terrain {
@@ -69,6 +71,9 @@ private:
     Unique<NodeGraph> m_Graph;
     Unique<GraphSerializer> m_Serializer;
     Unique<RecentFilesManager> m_RecentFiles;
+    Unique<UITheme> m_Theme;
+    Unique<StatusBar> m_StatusBar;
+    Unique<NotificationSystem> m_Notifications;
     NodeEditorState m_State;
 
     // UI state

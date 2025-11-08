@@ -9,6 +9,9 @@ NodeGraphEditor::NodeGraphEditor() {
     m_Graph = MakeUnique<NodeGraph>();
     m_Serializer = MakeUnique<GraphSerializer>();
     m_RecentFiles = MakeUnique<RecentFilesManager>();
+    m_Theme = MakeUnique<UITheme>();
+    m_StatusBar = MakeUnique<StatusBar>();
+    m_Notifications = MakeUnique<NotificationSystem>();
 
     // Load recent files
     m_RecentFiles->LoadFromFile("recent_files.txt");
@@ -26,19 +29,43 @@ bool NodeGraphEditor::Initialize() {
         return false;
     }
 
+    // Apply UI theme
+    m_Theme->Apply(UIThemePreset::Dark);
+
     // Initialize ImNodes
     ImNodes::CreateContext();
-    ImNodes::StyleColorsDark();
 
     // Create default output node
     CreateOutputNode();
+
+    // Set initial status
+    m_StatusBar->SetStatus("Ready");
+    m_Notifications->NotifySuccess("Welcome", "Terrain Engine Pro initialized successfully!");
 
     LOG_INFO("Node graph editor initialized");
     return true;
 }
 
 void NodeGraphEditor::Render() {
-    ImGui::Begin("Node Graph");
+    // Update status bar
+    m_StatusBar->SetNodeCount(static_cast<uint32>(m_Graph->GetNodes().size()));
+    if (!m_CurrentFilePath.empty()) {
+        m_StatusBar->SetCurrentFile(m_CurrentFilePath);
+    }
+
+    // Set window title
+    String windowTitle = "Terrain Engine Pro - ";
+    if (m_CurrentFilePath.empty()) {
+        windowTitle += m_UntitledGraphName;
+    } else {
+        size_t lastSlash = m_CurrentFilePath.find_last_of("/\\");
+        windowTitle += (lastSlash != String::npos) ? m_CurrentFilePath.substr(lastSlash + 1) : m_CurrentFilePath;
+    }
+    if (m_GraphDirty) {
+        windowTitle += " *";
+    }
+
+    ImGui::Begin(windowTitle.c_str());
 
     RenderMenuBar();
 
@@ -56,6 +83,12 @@ void NodeGraphEditor::Render() {
     ImGui::Columns(1);
 
     ImGui::End();
+
+    // Render status bar
+    m_StatusBar->Render();
+
+    // Render notifications
+    m_Notifications->Render();
 }
 
 void NodeGraphEditor::RenderMenuBar() {
@@ -64,10 +97,16 @@ void NodeGraphEditor::RenderMenuBar() {
             if (ImGui::MenuItem("New Graph", "Ctrl+N")) {
                 NewGraph();
             }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Create a new empty terrain graph");
+            }
             ImGui::Separator();
 
             if (ImGui::MenuItem("Open...", "Ctrl+O")) {
                 LoadGraphWithDialog();
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Open an existing terrain graph from a file");
             }
 
             // Recent files submenu
@@ -106,9 +145,15 @@ void NodeGraphEditor::RenderMenuBar() {
                     SaveGraph(m_CurrentFilePath);
                 }
             }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Save the current terrain graph");
+            }
 
             if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S")) {
                 SaveGraphAs();
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Save the terrain graph to a new file");
             }
 
             ImGui::EndMenu();
@@ -117,11 +162,23 @@ void NodeGraphEditor::RenderMenuBar() {
         if (ImGui::BeginMenu("Add Node")) {
             if (ImGui::BeginMenu("Generators")) {
                 if (ImGui::MenuItem("Perlin Noise")) CreatePerlinNode();
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("Classic Perlin noise - smooth, natural terrain");
+
                 if (ImGui::MenuItem("Voronoi")) CreateVoronoiNode();
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("Cellular/Voronoi noise - cracked, angular patterns");
+
                 if (ImGui::MenuItem("Ridged Noise")) CreateRidgedNode();
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("Ridged multifractal noise - sharp mountain ridges");
+
                 if (ImGui::MenuItem("Gradient")) CreateNodeOfType("Gradient");
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("Linear gradient from one edge to another");
+
                 if (ImGui::MenuItem("Constant")) CreateNodeOfType("Constant");
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("Uniform height value across terrain");
+
                 if (ImGui::MenuItem("White Noise")) CreateNodeOfType("WhiteNoise");
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("Random noise - completely random values");
+
                 ImGui::EndMenu();
             }
 
@@ -142,20 +199,34 @@ void NodeGraphEditor::RenderMenuBar() {
 
             if (ImGui::BeginMenu("Erosion")) {
                 if (ImGui::MenuItem("Hydraulic Erosion")) CreateNodeOfType("HydraulicErosion");
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("Simulate water erosion - carves valleys and rivers");
+
                 if (ImGui::MenuItem("Thermal Erosion")) CreateNodeOfType("ThermalErosion");
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("Simulate weathering - smooths steep slopes");
+
                 ImGui::EndMenu();
             }
 
             if (ImGui::BeginMenu("Textures")) {
                 if (ImGui::MenuItem("Normal Map")) CreateNodeOfType("NormalMap");
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("Generate normal map for PBR rendering");
+
                 if (ImGui::MenuItem("Ambient Occlusion")) CreateNodeOfType("AmbientOcclusion");
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("Generate AO map for contact shadows");
+
                 if (ImGui::MenuItem("Splatmap")) CreateNodeOfType("Splatmap");
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("Generate material blend map (4 layers)");
+
                 ImGui::EndMenu();
             }
 
             if (ImGui::BeginMenu("Mesh Export")) {
                 if (ImGui::MenuItem("OBJ Export")) CreateNodeOfType("OBJExport");
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("Export terrain as OBJ mesh file");
+
                 if (ImGui::MenuItem("FBX Export")) CreateNodeOfType("FBXExport");
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("Export terrain as FBX mesh file");
+
                 ImGui::EndMenu();
             }
 
@@ -175,29 +246,48 @@ void NodeGraphEditor::RenderMenuBar() {
             if (ImGui::MenuItem("Alps")) {
                 MountainPresets::CreatePreset(m_Graph.get(), MountainPreset::Alps);
                 m_GraphDirty = true;
+                m_Notifications->NotifyInfo("Preset Loaded", "Alps mountain terrain");
             }
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Sharp peaks, glacial features - European Alps");
+
             if (ImGui::MenuItem("Appalachians")) {
                 MountainPresets::CreatePreset(m_Graph.get(), MountainPreset::Appalachians);
                 m_GraphDirty = true;
+                m_Notifications->NotifyInfo("Preset Loaded", "Appalachian mountain terrain");
             }
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Rolling ridges, weathered - Eastern USA");
+
             if (ImGui::MenuItem("Himalayas")) {
                 MountainPresets::CreatePreset(m_Graph.get(), MountainPreset::Himalayas);
                 m_GraphDirty = true;
+                m_Notifications->NotifyInfo("Preset Loaded", "Himalayan mountain terrain");
             }
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Extreme peaks, sharp ridges - World's highest");
+
             if (ImGui::MenuItem("Rocky Mountains")) {
                 MountainPresets::CreatePreset(m_Graph.get(), MountainPreset::RockyMountains);
                 m_GraphDirty = true;
+                m_Notifications->NotifyInfo("Preset Loaded", "Rocky Mountain terrain");
             }
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Mixed terrain, varied features - Western North America");
+
             if (ImGui::MenuItem("Andes")) {
                 MountainPresets::CreatePreset(m_Graph.get(), MountainPreset::Andes);
                 m_GraphDirty = true;
+                m_Notifications->NotifyInfo("Preset Loaded", "Andes mountain terrain");
             }
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Long ridges, volcanic features - South America");
+
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu("View")) {
             ImGui::MenuItem("Properties", nullptr, &m_ShowProperties);
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Toggle node properties panel");
+
             ImGui::MenuItem("Auto Execute", nullptr, &m_AutoExecute);
+            if (ImGui::IsItemHovered()) ImGui::SetTooltip("Automatically execute graph when nodes change");
+
             ImGui::EndMenu();
         }
 
@@ -504,14 +594,24 @@ void NodeGraphEditor::SelectNode(Node* node) {
 
 void NodeGraphEditor::SaveGraph(const String& filepath) {
     LOG_INFO("Saving node graph...");
+    m_StatusBar->SetStatus("Saving graph...");
+
     auto result = m_Serializer->SaveToFile(m_Graph.get(), filepath);
 
     if (result.success) {
         m_CurrentFilePath = filepath;
         m_GraphDirty = false;
         m_RecentFiles->AddRecentFile(filepath);
+
+        size_t lastSlash = filepath.find_last_of("/\\");
+        String filename = (lastSlash != String::npos) ? filepath.substr(lastSlash + 1) : filepath;
+
+        m_StatusBar->ShowSuccess("Graph saved: " + filename);
+        m_Notifications->NotifySuccess("Save Successful", "Graph saved to " + filename);
         LOG_INFO("Graph saved successfully to: %s", filepath.c_str());
     } else {
+        m_StatusBar->ShowError("Save failed");
+        m_Notifications->NotifyError("Save Failed", result.errorMessage);
         LOG_ERROR("Failed to save graph: %s", result.errorMessage.c_str());
     }
 }
@@ -533,6 +633,8 @@ void NodeGraphEditor::SaveGraphAs() {
 
 void NodeGraphEditor::LoadGraph(const String& filepath) {
     LOG_INFO("Loading node graph...");
+    m_StatusBar->SetStatus("Loading graph...");
+
     auto result = m_Serializer->LoadFromFile(m_Graph.get(), filepath);
 
     if (result.success) {
@@ -549,8 +651,17 @@ void NodeGraphEditor::LoadGraph(const String& filepath) {
             }
         }
 
+        size_t lastSlash = filepath.find_last_of("/\\");
+        String filename = (lastSlash != String::npos) ? filepath.substr(lastSlash + 1) : filepath;
+
+        uint32 nodeCount = static_cast<uint32>(m_Graph->GetNodes().size());
+        m_StatusBar->ShowSuccess("Graph loaded: " + filename);
+        m_Notifications->NotifySuccess("Load Successful",
+            "Loaded " + filename + " with " + std::to_string(nodeCount) + " nodes");
         LOG_INFO("Graph loaded successfully from: %s", filepath.c_str());
     } else {
+        m_StatusBar->ShowError("Load failed");
+        m_Notifications->NotifyError("Load Failed", result.errorMessage);
         LOG_ERROR("Failed to load graph: %s", result.errorMessage.c_str());
     }
 }
@@ -579,6 +690,8 @@ void NodeGraphEditor::NewGraph() {
     m_GraphDirty = false;
     m_SelectedNode = nullptr;
 
+    m_StatusBar->SetStatus("Ready");
+    m_Notifications->NotifyInfo("New Graph", "Created new empty graph");
     LOG_INFO("Created new graph");
 }
 
