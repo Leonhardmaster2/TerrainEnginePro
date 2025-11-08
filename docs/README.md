@@ -6,6 +6,24 @@ This folder contains comprehensive design documentation for the **Terrain Engine
 
 ## Document Index
 
+### Getting Started
+
+#### [INSTALLATION.md](INSTALLATION.md)
+**Complete installation and setup guide**
+
+- System requirements (minimum and recommended)
+- Installing prerequisites (Visual Studio, Vulkan SDK, CMake, Git)
+- Cloning the repository from GitHub
+- Installing dependencies (vcpkg, manual dependencies)
+- Building the project
+- Running the application
+- Development environment setup
+- Troubleshooting common issues
+
+**Start here** if you're setting up the project for the first time.
+
+---
+
 ### Core Architecture
 
 #### [ARCHITECTURE.md](ARCHITECTURE.md)
@@ -106,11 +124,18 @@ Read this for **project planning and execution**.
 
 ## Quick Start Guide
 
+### For New Users / First-Time Setup
+
+1. **Read INSTALLATION.md first** - Set up your development environment
+2. **Follow the installation steps** - Install all prerequisites and build the project
+3. **Run the application** - Verify everything works
+
 ### For Developers
 
-1. **Read ARCHITECTURE.md first** - Get the big picture
-2. **Read IMPLEMENTATION_ROADMAP.md** - Understand the development phases
-3. **Dive into specific modules**:
+1. **Complete installation** - Follow INSTALLATION.md if you haven't already
+2. **Read ARCHITECTURE.md** - Get the big picture
+3. **Read IMPLEMENTATION_ROADMAP.md** - Understand the development phases
+4. **Dive into specific modules**:
    - GPU work → GPU_PIPELINE_DESIGN.md
    - Node system → NODE_SYSTEM_DESIGN.md
    - UI work → UI_UX_DESIGN.md
