@@ -27,12 +27,16 @@ else()
     add_compile_options($<$<CONFIG:Debug>:-g>)
 endif()
 
-# Find Vulkan
-find_package(Vulkan REQUIRED)
+# Find Vulkan (optional - required for GPU compute)
+find_package(Vulkan)
+
+# Find OpenGL
+find_package(OpenGL REQUIRED)
 
 # vcpkg packages
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
+find_package(glad CONFIG REQUIRED)
 find_package(RapidJSON CONFIG)
 
 # Include directories
@@ -56,7 +60,7 @@ set(IMGUI_SOURCES
     ${IMGUI_DIR}/imgui_tables.cpp
     ${IMGUI_DIR}/imgui_widgets.cpp
     ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
-    ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
 # ImNodes sources
@@ -69,6 +73,7 @@ file(GLOB_RECURSE ENGINE_SOURCES
     ${CMAKE_SOURCE_DIR}/src/Core/*.cpp
     ${CMAKE_SOURCE_DIR}/src/GPU/*.cpp
     ${CMAKE_SOURCE_DIR}/src/Terrain/*.cpp
+    ${CMAKE_SOURCE_DIR}/src/Rendering/*.cpp
     ${CMAKE_SOURCE_DIR}/src/Nodes/*.cpp
     ${CMAKE_SOURCE_DIR}/src/Erosion/*.cpp
     ${CMAKE_SOURCE_DIR}/src/Texture/*.cpp
@@ -87,10 +92,17 @@ add_executable(TerrainEngine
 # Link libraries
 target_link_libraries(TerrainEngine
     PRIVATE
-        Vulkan::Vulkan
+        OpenGL::GL
         glfw
         glm::glm
+        glad::glad
 )
+
+# Add Vulkan if available
+if(Vulkan_FOUND)
+    target_link_libraries(TerrainEngine PRIVATE Vulkan::Vulkan)
+    target_compile_definitions(TerrainEngine PRIVATE VULKAN_AVAILABLE)
+endif()
 
 # Include ImGui and VMA
 target_include_directories(TerrainEngine PRIVATE
@@ -102,16 +114,22 @@ target_include_directories(TerrainEngine PRIVATE
 )
 
 # Copy shaders to build directory
-file(GLOB_RECURSE SHADER_SOURCES
+file(GLOB_RECURSE COMPUTE_SHADER_SOURCES
     ${CMAKE_SOURCE_DIR}/shaders/*.comp
+)
+
+# Copy OpenGL shaders (no compilation needed)
+file(GLOB_RECURSE OPENGL_SHADER_SOURCES
+    ${CMAKE_SOURCE_DIR}/shaders/*.vert
+    ${CMAKE_SOURCE_DIR}/shaders/*.frag
     ${CMAKE_SOURCE_DIR}/shaders/*.glsl
 )
 
-# Shader compilation
+# Compile Vulkan compute shaders to SPIR-V
 find_program(GLSL_VALIDATOR glslangValidator HINTS $ENV{VULKAN_SDK}/Bin)
 
 if(GLSL_VALIDATOR)
-    foreach(SHADER ${SHADER_SOURCES})
+    foreach(SHADER ${COMPUTE_SHADER_SOURCES})
         get_filename_component(SHADER_NAME ${SHADER} NAME)
         set(SPIRV_OUTPUT ${CMAKE_BINARY_DIR}/shaders/${SHADER_NAME}.spv)
 
@@ -120,17 +138,36 @@ if(GLSL_VALIDATOR)
             COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/shaders
             COMMAND ${GLSL_VALIDATOR} -V ${SHADER} -o ${SPIRV_OUTPUT}
             DEPENDS ${SHADER}
-            COMMENT "Compiling shader: ${SHADER_NAME}"
+            COMMENT "Compiling compute shader: ${SHADER_NAME}"
         )
 
         list(APPEND SPIRV_SHADERS ${SPIRV_OUTPUT})
     endforeach()
 
-    add_custom_target(Shaders ALL DEPENDS ${SPIRV_SHADERS})
-    add_dependencies(TerrainEngine Shaders)
+    add_custom_target(ComputeShaders ALL DEPENDS ${SPIRV_SHADERS})
+    add_dependencies(TerrainEngine ComputeShaders)
 else()
-    message(WARNING "glslangValidator not found - shaders will not be compiled")
+    message(WARNING "glslangValidator not found - compute shaders will not be compiled")
 endif()
+
+# Copy OpenGL shaders to build directory (no compilation needed)
+foreach(SHADER ${OPENGL_SHADER_SOURCES})
+    get_filename_component(SHADER_NAME ${SHADER} NAME)
+    set(SHADER_OUTPUT ${CMAKE_BINARY_DIR}/shaders/${SHADER_NAME})
+
+    add_custom_command(
+        OUTPUT ${SHADER_OUTPUT}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/shaders
+        COMMAND ${CMAKE_COMMAND} -E copy ${SHADER} ${SHADER_OUTPUT}
+        DEPENDS ${SHADER}
+        COMMENT "Copying OpenGL shader: ${SHADER_NAME}"
+    )
+
+    list(APPEND OPENGL_SHADERS ${SHADER_OUTPUT})
+endforeach()
+
+add_custom_target(OpenGLShaders ALL DEPENDS ${OPENGL_SHADERS})
+add_dependencies(TerrainEngine OpenGLShaders)
 
 # Copy resources to build directory
 add_custom_command(TARGET TerrainEngine POST_BUILD

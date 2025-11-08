@@ -21,7 +21,7 @@ public:
     int GetHeight() const { return m_Height; }
 
 private:
-    void InitializeGLFW();
+    bool InitializeGLFW();
     void InitializeImGui();
     void ProcessInput();
     void Update(float deltaTime);
