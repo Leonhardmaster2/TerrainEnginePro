@@ -1,0 +1,81 @@
+# Build directories
+build/
+bin/
+lib/
+out/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+
+# Visual Studio
+.vs/
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Compiled files
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.exp
+*.pdb
+*.ilk
+*.idb
+
+# Shader compiled outputs
+*.spv
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+terrain_engine.log
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*~
+
+# User data
+config.ini
+user_data/
+
+# External dependencies (managed via vcpkg/git submodules)
+# Keep external/ directory structure but ignore contents
+external/*
+!external/.gitkeep
+
+# vcpkg
+vcpkg_installed/
+
+# Assets (large files)
+*.terrain
+*.heightmap
+
+# Backups
+*.bak
+*.backup

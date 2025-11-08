@@ -1,0 +1,6 @@
+# This directory contains external dependencies
+# Clone the following repositories here:
+# - imgui (docking branch)
+# - VulkanMemoryAllocator
+# - imnodes
+# - stb
