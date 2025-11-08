@@ -6,6 +6,7 @@
 #include "Nodes/ModifierNodes.h"
 #include "Nodes/ErosionNodes.h"
 #include "Nodes/TextureNodes.h"
+#include "Nodes/MeshExportNodes.h"
 #include "MountainPresets.h"
 
 namespace Terrain {

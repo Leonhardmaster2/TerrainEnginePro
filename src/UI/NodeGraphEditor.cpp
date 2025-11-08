@@ -91,6 +91,12 @@ void NodeGraphEditor::RenderMenuBar() {
                 ImGui::EndMenu();
             }
 
+            if (ImGui::BeginMenu("Mesh Export")) {
+                if (ImGui::MenuItem("OBJ Export")) CreateNodeOfType("OBJExport");
+                if (ImGui::MenuItem("FBX Export")) CreateNodeOfType("FBXExport");
+                ImGui::EndMenu();
+            }
+
             if (ImGui::BeginMenu("Combiners")) {
                 if (ImGui::MenuItem("Add")) CreateNodeOfType("Add");
                 if (ImGui::MenuItem("Multiply")) CreateNodeOfType("Multiply");
@@ -410,6 +416,8 @@ Node* NodeGraphEditor::CreateNodeOfType(const String& type) {
     else if (type == "NormalMap") node = m_Graph->CreateNode<NormalMapNode>();
     else if (type == "AmbientOcclusion") node = m_Graph->CreateNode<AmbientOcclusionNode>();
     else if (type == "Splatmap") node = m_Graph->CreateNode<SplatmapNode>();
+    else if (type == "OBJExport") node = m_Graph->CreateNode<OBJExportNode>();
+    else if (type == "FBXExport") node = m_Graph->CreateNode<FBXExportNode>();
     else if (type == "Add") node = m_Graph->CreateNode<AddNode>();
     else if (type == "Multiply") node = m_Graph->CreateNode<MultiplyNode>();
     else if (type == "Blend") node = m_Graph->CreateNode<BlendNode>();
