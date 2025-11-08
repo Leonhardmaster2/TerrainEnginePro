@@ -7,6 +7,7 @@
 #include "Terrain/TerrainGenerator.h"
 #include "Terrain/Heightfield.h"
 #include "NodeGraphEditor.h"
+#include "MountainPresets.h"
 
 namespace Terrain {
 

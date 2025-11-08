@@ -4,6 +4,8 @@
 #include "Nodes/NodeGraph.h"
 #include "Nodes/GeneratorNodes.h"
 #include "Nodes/ModifierNodes.h"
+#include "Nodes/ErosionNodes.h"
+#include "MountainPresets.h"
 
 namespace Terrain {
 

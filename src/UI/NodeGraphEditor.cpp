@@ -78,6 +78,12 @@ void NodeGraphEditor::RenderMenuBar() {
                 ImGui::EndMenu();
             }
 
+            if (ImGui::BeginMenu("Erosion")) {
+                if (ImGui::MenuItem("Hydraulic Erosion")) CreateNodeOfType("HydraulicErosion");
+                if (ImGui::MenuItem("Thermal Erosion")) CreateNodeOfType("ThermalErosion");
+                ImGui::EndMenu();
+            }
+
             if (ImGui::BeginMenu("Combiners")) {
                 if (ImGui::MenuItem("Add")) CreateNodeOfType("Add");
                 if (ImGui::MenuItem("Multiply")) CreateNodeOfType("Multiply");
@@ -87,6 +93,30 @@ void NodeGraphEditor::RenderMenuBar() {
                 ImGui::EndMenu();
             }
 
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Presets")) {
+            if (ImGui::MenuItem("Alps")) {
+                MountainPresets::CreatePreset(m_Graph.get(), MountainPreset::Alps);
+                m_GraphDirty = true;
+            }
+            if (ImGui::MenuItem("Appalachians")) {
+                MountainPresets::CreatePreset(m_Graph.get(), MountainPreset::Appalachians);
+                m_GraphDirty = true;
+            }
+            if (ImGui::MenuItem("Himalayas")) {
+                MountainPresets::CreatePreset(m_Graph.get(), MountainPreset::Himalayas);
+                m_GraphDirty = true;
+            }
+            if (ImGui::MenuItem("Rocky Mountains")) {
+                MountainPresets::CreatePreset(m_Graph.get(), MountainPreset::RockyMountains);
+                m_GraphDirty = true;
+            }
+            if (ImGui::MenuItem("Andes")) {
+                MountainPresets::CreatePreset(m_Graph.get(), MountainPreset::Andes);
+                m_GraphDirty = true;
+            }
             ImGui::EndMenu();
         }
 
@@ -273,6 +303,42 @@ void NodeGraphEditor::RenderNodeProperties() {
                 if (m_AutoExecute) ExecuteGraph();
             }
         }
+        else if (auto* hydraulic = dynamic_cast<HydraulicErosionNode*>(m_SelectedNode)) {
+            ImGui::Text("Hydraulic Erosion Parameters");
+            ImGui::TextWrapped("Simulates realistic water erosion. Higher iterations = more erosion, but slower.");
+            ImGui::Separator();
+
+            bool changed = false;
+            changed |= ImGui::DragInt("Droplets", reinterpret_cast<int*>(&hydraulic->params.iterations), 1000, 10000, 500000);
+            changed |= ImGui::SliderFloat("Inertia", &hydraulic->params.inertia, 0.0f, 0.3f);
+            changed |= ImGui::SliderFloat("Capacity", &hydraulic->params.sedimentCapacity, 1.0f, 10.0f);
+            changed |= ImGui::SliderFloat("Erode Speed", &hydraulic->params.erodeSpeed, 0.1f, 1.0f);
+            changed |= ImGui::SliderFloat("Deposit Speed", &hydraulic->params.depositSpeed, 0.1f, 1.0f);
+            changed |= ImGui::SliderFloat("Evaporation", &hydraulic->params.evaporateSpeed, 0.0f, 0.1f);
+            changed |= ImGui::SliderFloat("Gravity", &hydraulic->params.gravity, 1.0f, 10.0f);
+
+            if (changed) {
+                hydraulic->MarkDirty();
+                m_GraphDirty = true;
+                if (m_AutoExecute) ExecuteGraph();
+            }
+        }
+        else if (auto* thermal = dynamic_cast<ThermalErosionNode*>(m_SelectedNode)) {
+            ImGui::Text("Thermal Erosion Parameters");
+            ImGui::TextWrapped("Simulates material sliding down steep slopes. Creates realistic slope angles.");
+            ImGui::Separator();
+
+            bool changed = false;
+            changed |= ImGui::SliderInt("Iterations", &thermal->params.iterations, 1, 30);
+            changed |= ImGui::SliderFloat("Talus Angle", &thermal->params.talusAngle, 0.3f, 1.5f);
+            changed |= ImGui::SliderFloat("Strength", &thermal->params.strength, 0.1f, 1.0f);
+
+            if (changed) {
+                thermal->MarkDirty();
+                m_GraphDirty = true;
+                if (m_AutoExecute) ExecuteGraph();
+            }
+        }
     } else {
         ImGui::TextDisabled("No node selected");
     }
@@ -332,6 +398,8 @@ Node* NodeGraphEditor::CreateNodeOfType(const String& type) {
     else if (type == "Curve") node = m_Graph->CreateNode<CurveNode>();
     else if (type == "Smooth") node = m_Graph->CreateNode<SmoothNode>();
     else if (type == "Sharpen") node = m_Graph->CreateNode<SharpenNode>();
+    else if (type == "HydraulicErosion") node = m_Graph->CreateNode<HydraulicErosionNode>();
+    else if (type == "ThermalErosion") node = m_Graph->CreateNode<ThermalErosionNode>();
     else if (type == "Add") node = m_Graph->CreateNode<AddNode>();
     else if (type == "Multiply") node = m_Graph->CreateNode<MultiplyNode>();
     else if (type == "Blend") node = m_Graph->CreateNode<BlendNode>();

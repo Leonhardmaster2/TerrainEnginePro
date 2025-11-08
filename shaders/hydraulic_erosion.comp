@@ -1,0 +1,208 @@
+#version 450
+
+// Hydraulic erosion compute shader
+// Simulates water droplet erosion for realistic terrain
+
+layout(local_size_x = 1, local_size_y = 1) in;
+
+// Input/Output heightfield
+layout(set = 0, binding = 0) buffer HeightBuffer {
+    float heights[];
+};
+
+// Push constants for erosion parameters
+layout(push_constant) uniform PushConstants {
+    uint resolutionX;
+    uint resolutionY;
+    uint iterations;
+    uint seed;
+
+    float inertia;          // 0.05 - how much velocity is retained
+    float sedimentCapacity; // 4.0 - max sediment carried
+    float minSlope;         // 0.01 - minimum slope for erosion
+    float erodeSpeed;       // 0.3 - erosion rate
+    float depositSpeed;     // 0.3 - deposition rate
+    float evaporateSpeed;   // 0.01 - water evaporation rate
+    float gravity;          // 4.0 - gravity strength
+    float maxDropletLifetime; // 30 - max steps per droplet
+
+    uint startSeed;         // Random seed offset
+} params;
+
+// Random number generator
+uint hash(uint x) {
+    x += x << 10u;
+    x ^= x >> 6u;
+    x += x << 3u;
+    x ^= x >> 11u;
+    x += x << 15u;
+    return x;
+}
+
+float random(uint seed) {
+    return float(hash(seed)) / 4294967295.0;
+}
+
+// Get height at position
+float getHeight(int x, int y) {
+    x = clamp(x, 0, int(params.resolutionX) - 1);
+    y = clamp(y, 0, int(params.resolutionY) - 1);
+    return heights[y * params.resolutionX + x];
+}
+
+// Set height at position
+void setHeight(int x, int y, float h) {
+    if (x >= 0 && x < int(params.resolutionX) && y >= 0 && y < int(params.resolutionY)) {
+        heights[y * params.resolutionX + x] = h;
+    }
+}
+
+// Calculate gradient at position using bilinear interpolation
+vec2 calculateGradient(vec2 pos) {
+    int x0 = int(floor(pos.x));
+    int y0 = int(floor(pos.y));
+    int x1 = x0 + 1;
+    int y1 = y0 + 1;
+
+    float fx = pos.x - float(x0);
+    float fy = pos.y - float(y0);
+
+    // Get heights at corners
+    float h00 = getHeight(x0, y0);
+    float h10 = getHeight(x1, y0);
+    float h01 = getHeight(x0, y1);
+    float h11 = getHeight(x1, y1);
+
+    // Calculate gradient
+    float dx = (h10 - h00) * (1.0 - fy) + (h11 - h01) * fy;
+    float dy = (h01 - h00) * (1.0 - fx) + (h11 - h10) * fx;
+
+    return vec2(dx, dy);
+}
+
+// Get interpolated height at position
+float getHeightInterpolated(vec2 pos) {
+    int x0 = int(floor(pos.x));
+    int y0 = int(floor(pos.y));
+    int x1 = x0 + 1;
+    int y1 = y0 + 1;
+
+    float fx = pos.x - float(x0);
+    float fy = pos.y - float(y0);
+
+    float h00 = getHeight(x0, y0);
+    float h10 = getHeight(x1, y0);
+    float h01 = getHeight(x0, y1);
+    float h11 = getHeight(x1, y1);
+
+    // Bilinear interpolation
+    float h0 = mix(h00, h10, fx);
+    float h1 = mix(h01, h11, fx);
+    return mix(h0, h1, fy);
+}
+
+// Main erosion function - simulate one water droplet
+void simulateDroplet(uint dropletIndex) {
+    uint rngState = params.startSeed + dropletIndex;
+
+    // Random starting position
+    vec2 pos = vec2(
+        random(rngState++) * float(params.resolutionX - 1),
+        random(rngState++) * float(params.resolutionY - 1)
+    );
+
+    vec2 dir = vec2(0.0);
+    float speed = 1.0;
+    float water = 1.0;
+    float sediment = 0.0;
+
+    for (int lifetime = 0; lifetime < int(params.maxDropletLifetime); lifetime++) {
+        // Get current position
+        int nodeX = int(pos.x);
+        int nodeY = int(pos.y);
+
+        // Calculate droplet's offset inside the cell
+        float cellOffsetX = pos.x - float(nodeX);
+        float cellOffsetY = pos.y - float(nodeY);
+
+        // Calculate height and gradient
+        float height = getHeightInterpolated(pos);
+        vec2 gradient = calculateGradient(pos);
+
+        // Update direction and position
+        dir = dir * params.inertia - gradient * (1.0 - params.inertia);
+
+        // Normalize direction if non-zero
+        float dirLength = length(dir);
+        if (dirLength != 0.0) {
+            dir = dir / dirLength;
+        }
+
+        // Move droplet
+        vec2 newPos = pos + dir;
+
+        // Check bounds
+        if (newPos.x < 0.0 || newPos.x >= float(params.resolutionX - 1) ||
+            newPos.y < 0.0 || newPos.y >= float(params.resolutionY - 1)) {
+            break;
+        }
+
+        // Get new height
+        float newHeight = getHeightInterpolated(newPos);
+        float deltaHeight = newHeight - height;
+
+        // Calculate sediment capacity
+        float capacity = max(-deltaHeight, params.minSlope) * speed * water * params.sedimentCapacity;
+
+        // Erode or deposit
+        if (sediment > capacity || deltaHeight > 0.0) {
+            // Deposit sediment
+            float amountToDeposit = (deltaHeight > 0.0) ?
+                min(deltaHeight, sediment) :
+                (sediment - capacity) * params.depositSpeed;
+
+            sediment -= amountToDeposit;
+
+            // Deposit to the four surrounding nodes
+            float h00 = getHeight(nodeX, nodeY);
+            float h10 = getHeight(nodeX + 1, nodeY);
+            float h01 = getHeight(nodeX, nodeY + 1);
+            float h11 = getHeight(nodeX + 1, nodeY + 1);
+
+            setHeight(nodeX, nodeY, h00 + amountToDeposit * (1.0 - cellOffsetX) * (1.0 - cellOffsetY));
+            setHeight(nodeX + 1, nodeY, h10 + amountToDeposit * cellOffsetX * (1.0 - cellOffsetY));
+            setHeight(nodeX, nodeY + 1, h01 + amountToDeposit * (1.0 - cellOffsetX) * cellOffsetY);
+            setHeight(nodeX + 1, nodeY + 1, h11 + amountToDeposit * cellOffsetX * cellOffsetY);
+        } else {
+            // Erode
+            float amountToErode = min((capacity - sediment) * params.erodeSpeed, -deltaHeight);
+
+            // Erode from the four surrounding nodes
+            float h00 = getHeight(nodeX, nodeY);
+            float h10 = getHeight(nodeX + 1, nodeY);
+            float h01 = getHeight(nodeX, nodeY + 1);
+            float h11 = getHeight(nodeX + 1, nodeY + 1);
+
+            setHeight(nodeX, nodeY, h00 - amountToErode * (1.0 - cellOffsetX) * (1.0 - cellOffsetY));
+            setHeight(nodeX + 1, nodeY, h10 - amountToErode * cellOffsetX * (1.0 - cellOffsetY));
+            setHeight(nodeX, nodeY + 1, h01 - amountToErode * (1.0 - cellOffsetX) * cellOffsetY);
+            setHeight(nodeX + 1, nodeY + 1, h11 - amountToErode * cellOffsetX * cellOffsetY);
+
+            sediment += amountToErode;
+        }
+
+        // Update speed and evaporate water
+        speed = sqrt(max(0.0, speed * speed + deltaHeight * params.gravity));
+        water *= (1.0 - params.evaporateSpeed);
+
+        pos = newPos;
+    }
+}
+
+void main() {
+    uint dropletIndex = gl_GlobalInvocationID.x;
+
+    if (dropletIndex < params.iterations) {
+        simulateDroplet(dropletIndex);
+    }
+}
