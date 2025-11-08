@@ -139,6 +139,42 @@ bool NodeGraph::IsConnected(uint32 pinId) const {
     return false;
 }
 
+bool NodeGraph::ConnectPins(Pin* outputPin, Pin* inputPin) {
+    if (!outputPin || !inputPin) {
+        LOG_ERROR("Invalid pins for connection");
+        return false;
+    }
+
+    if (!outputPin->isOutput || inputPin->isOutput) {
+        LOG_ERROR("Invalid pin types for connection");
+        return false;
+    }
+
+    // Type checking
+    if (outputPin->type != inputPin->type) {
+        LOG_ERROR("Cannot connect pins of different types");
+        return false;
+    }
+
+    // Remove existing connection from input
+    if (inputPin->connectedTo) {
+        auto& oldConnections = inputPin->connectedTo->connections;
+        oldConnections.erase(
+            std::remove(oldConnections.begin(), oldConnections.end(), inputPin),
+            oldConnections.end()
+        );
+    }
+
+    // Create new connection
+    inputPin->connectedTo = outputPin;
+    outputPin->connections.push_back(inputPin);
+
+    // Mark downstream node dirty
+    inputPin->ownerNode->MarkDirty();
+
+    return true;
+}
+
 bool NodeGraph::ExecuteNode(Node* node) {
     if (!node) {
         return false;

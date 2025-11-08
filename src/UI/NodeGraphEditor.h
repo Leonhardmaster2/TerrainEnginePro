@@ -7,6 +7,7 @@
 #include "Nodes/ErosionNodes.h"
 #include "Nodes/TextureNodes.h"
 #include "Nodes/MeshExportNodes.h"
+#include "Serialization/GraphSerializer.h"
 #include "MountainPresets.h"
 
 namespace Terrain {
@@ -38,6 +39,10 @@ public:
     void CreateRidgedNode();
     void CreateOutputNode();
 
+    // Save/Load
+    void SaveGraph(const String& filepath);
+    void LoadGraph(const String& filepath);
+
 private:
     void RenderMenuBar();
     void RenderNodeList();
@@ -58,6 +63,7 @@ private:
     void SelectNode(Node* node);
 
     Unique<NodeGraph> m_Graph;
+    Unique<GraphSerializer> m_Serializer;
     NodeEditorState m_State;
 
     // UI state
@@ -65,6 +71,7 @@ private:
     bool m_ShowProperties = true;
     bool m_AutoExecute = true;
     bool m_GraphDirty = false;
+    String m_CurrentFilePath;
 };
 
 } // namespace Terrain

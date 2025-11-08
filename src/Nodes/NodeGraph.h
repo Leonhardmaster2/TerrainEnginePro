@@ -24,6 +24,19 @@ public:
         return ptr;
     }
 
+    // Create node with specific ID (for deserialization)
+    template<typename T, typename... Args>
+    T* CreateNodeWithID(uint32 id, Args&&... args) {
+        auto node = MakeUnique<T>(id, std::forward<Args>(args)...);
+        T* ptr = node.get();
+        m_Nodes[id] = std::move(node);
+        // Update next ID if necessary
+        if (id >= m_NextNodeID) {
+            m_NextNodeID = id + 1;
+        }
+        return ptr;
+    }
+
     void DeleteNode(uint32 nodeId);
     Node* GetNode(uint32 nodeId);
     const std::unordered_map<uint32, Unique<Node>>& GetNodes() const { return m_Nodes; }
@@ -32,6 +45,7 @@ public:
     bool CreateConnection(uint32 outputPinId, uint32 inputPinId);
     void DeleteConnection(uint32 inputPinId);
     bool IsConnected(uint32 pinId) const;
+    bool ConnectPins(Pin* outputPin, Pin* inputPin);
 
     // Execution
     bool ExecuteNode(Node* node);

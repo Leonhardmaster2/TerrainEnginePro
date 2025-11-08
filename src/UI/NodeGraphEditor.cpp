@@ -7,6 +7,7 @@ namespace Terrain {
 
 NodeGraphEditor::NodeGraphEditor() {
     m_Graph = MakeUnique<NodeGraph>();
+    m_Serializer = MakeUnique<GraphSerializer>();
 }
 
 NodeGraphEditor::~NodeGraphEditor() {
@@ -52,6 +53,22 @@ void NodeGraphEditor::Render() {
 
 void NodeGraphEditor::RenderMenuBar() {
     if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Save Graph")) {
+                SaveGraph("terrain_graph.json");
+            }
+            if (ImGui::MenuItem("Load Graph")) {
+                LoadGraph("terrain_graph.json");
+            }
+            ImGui::Separator();
+            if (ImGui::MenuItem("New Graph")) {
+                m_Graph->Clear();
+                CreateOutputNode();
+                m_GraphDirty = true;
+            }
+            ImGui::EndMenu();
+        }
+
         if (ImGui::BeginMenu("Add Node")) {
             if (ImGui::BeginMenu("Generators")) {
                 if (ImGui::MenuItem("Perlin Noise")) CreatePerlinNode();
@@ -438,6 +455,42 @@ Node* NodeGraphEditor::GetSelectedNode() {
 
 void NodeGraphEditor::SelectNode(Node* node) {
     m_SelectedNode = node;
+}
+
+void NodeGraphEditor::SaveGraph(const String& filepath) {
+    LOG_INFO("Saving node graph...");
+    auto result = m_Serializer->SaveToFile(m_Graph.get(), filepath);
+
+    if (result.success) {
+        m_CurrentFilePath = filepath;
+        m_GraphDirty = false;
+        LOG_INFO("Graph saved successfully to: %s", filepath.c_str());
+    } else {
+        LOG_ERROR("Failed to save graph: %s", result.errorMessage.c_str());
+    }
+}
+
+void NodeGraphEditor::LoadGraph(const String& filepath) {
+    LOG_INFO("Loading node graph...");
+    auto result = m_Serializer->LoadFromFile(m_Graph.get(), filepath);
+
+    if (result.success) {
+        m_CurrentFilePath = filepath;
+        m_GraphDirty = false;
+        m_SelectedNode = nullptr;
+
+        // Find and set output node
+        for (const auto& [id, node] : m_Graph->GetNodes()) {
+            if (node->GetName() == "Output") {
+                m_Graph->SetOutputNode(node.get());
+                break;
+            }
+        }
+
+        LOG_INFO("Graph loaded successfully from: %s", filepath.c_str());
+    } else {
+        LOG_ERROR("Failed to load graph: %s", result.errorMessage.c_str());
+    }
 }
 
 } // namespace Terrain
