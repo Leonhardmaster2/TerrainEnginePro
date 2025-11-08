@@ -2,8 +2,9 @@
 
 A professional-grade, node-based terrain synthesis system for Windows 11 with GPU acceleration.
 
-![Status](https://img.shields.io/badge/status-in%20design-yellow)
+![Status](https://img.shields.io/badge/status-MVP%20(14%25%20complete)-yellow)
 ![Platform](https://img.shields.io/badge/platform-Windows%2011-blue)
+![Build](https://img.shields.io/badge/build-passing-brightgreen)
 ![License](https://img.shields.io/badge/license-TBD-lightgrey)
 
 ---
@@ -26,7 +27,17 @@ A professional-grade, node-based terrain synthesis system for Windows 11 with GP
 
 ## Screenshots
 
-> *Note: Application is currently in design phase. Screenshots will be added as development progresses.*
+> *Note: Application is currently in MVP phase. UI and terrain generation screenshots will be added as development progresses. Currently working: Vulkan initialization and shader compilation.*
+
+**Current Output Example:**
+```
+[00:00:00.000] [INFO]  ========================================
+[00:00:00.001] [INFO]  Terrain Engine Pro v1.0.0
+[00:00:00.001] [INFO]  ========================================
+[00:00:00.015] [INFO]  Initializing Vulkan Context...
+[00:00:00.120] [INFO]  Selected GPU: NVIDIA GeForce RTX 4090
+[00:00:00.125] [INFO]  Vulkan Context initialized successfully
+```
 
 ---
 
@@ -109,25 +120,41 @@ Benchmarked on **RTX 4090 + i9-13900K**:
 
 ## Project Status
 
-🚧 **Current Phase**: Design Complete
+🟨 **Current Phase**: MVP Implementation (Phase 1 - 60% Complete)
 
-The project is currently in the design phase. All architectural documentation has been completed and is available in the `docs/` directory.
+**What's Working Now:**
+- ✅ Complete design documentation (all 8 phases fully specified)
+- ✅ CMake build system with automatic shader compilation
+- ✅ Vulkan 1.3 initialization and GPU device selection
+- ✅ Perlin noise compute shader (GLSL → SPIR-V compiled)
+- ✅ Core infrastructure (logging, types, profiling framework)
+- ✅ Build and development instructions
+
+**What's Next (to complete Phase 1):**
+- ⏳ Compute pipeline execution engine
+- ⏳ Heightfield data structure and memory management
+- ⏳ VMA buffer allocation integration
+- ⏳ Descriptor set management
+- ⏳ Execute Perlin shader on GPU and save output
+
+**Reality Check:** This is an MVP foundation demonstrating the architecture. Full Gaea-like functionality requires completing the remaining phases (~30 weeks of development). See [DEVELOPMENT_STATUS.md](DEVELOPMENT_STATUS.md) for honest assessment.
 
 ### Development Roadmap
 
 | Phase | Status | Duration | Key Deliverable |
 |-------|--------|----------|-----------------|
-| Phase 0: Foundation | 📋 Planned | 2 weeks | Build system, core infrastructure |
-| Phase 1: Vulkan Backend | 📋 Planned | 3 weeks | GPU compute pipeline |
-| Phase 2: Terrain Core | 📋 Planned | 3 weeks | Heightfield system, I/O |
-| Phase 3: Node Graph | 📋 Planned | 4 weeks | Visual programming framework |
-| Phase 4: Basic UI | 📋 Planned | 4 weeks | Functional editor |
-| Phase 5: Erosion | 📋 Planned | 4 weeks | Realistic simulation |
-| Phase 6: Textures | 📋 Planned | 3 weeks | PBR map generation |
-| Phase 7: Advanced Features | 📋 Planned | 4 weeks | Tiling, presets, optimization |
-| Phase 8: Production Polish | 📋 Planned | 5 weeks | Documentation, deployment |
+| Phase 0: Foundation | ✅ **COMPLETE** | 2 weeks | Build system, core infrastructure |
+| Phase 1: Vulkan Backend | 🟨 **60% DONE** | 3 weeks | GPU compute pipeline |
+| Phase 2: Terrain Core | 📋 Designed | 3 weeks | Heightfield system, I/O |
+| Phase 3: Node Graph | 📋 Designed | 4 weeks | Visual programming framework |
+| Phase 4: Basic UI | 📋 Designed | 4 weeks | Functional editor |
+| Phase 5: Erosion | 📋 Designed | 4 weeks | Realistic simulation |
+| Phase 6: Textures | 📋 Designed | 3 weeks | PBR map generation |
+| Phase 7: Advanced Features | 📋 Designed | 4 weeks | Tiling, presets, optimization |
+| Phase 8: Production Polish | 📋 Designed | 5 weeks | Documentation, deployment |
 
-**Estimated Timeline**: 8-9 months to v1.0 release
+**Current Progress**: ~5 weeks of 35-week plan (14% complete)
+**Estimated to v1.0**: ~30 weeks remaining (~7 months)
 
 See [Implementation Roadmap](docs/IMPLEMENTATION_ROADMAP.md) for detailed breakdown.
 
@@ -135,25 +162,39 @@ See [Implementation Roadmap](docs/IMPLEMENTATION_ROADMAP.md) for detailed breakd
 
 ## Building from Source
 
+👉 **For complete build instructions, see [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md)**
+
 ### Quick Build (Windows 11)
 
+**Prerequisites:** Visual Studio 2022, Vulkan SDK 1.3+, CMake 3.20+, vcpkg
+
 ```cmd
-# Clone the repository
+# Clone repository
 git clone https://github.com/Leonhardmaster2/TerrainEnginePro.git
 cd TerrainEnginePro
 
-# Configure with CMake
-mkdir build && cd build
-cmake .. -G "Visual Studio 17 2022" -A x64
+# Set up external dependencies (one-time setup)
+mkdir external && cd external
+git clone --branch docking https://github.com/ocornut/imgui.git
+git clone https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+git clone https://github.com/Nelarius/imnodes.git
+git clone https://github.com/nothings/stb.git
+cd ..
+
+# Install vcpkg dependencies
+vcpkg install glfw3:x64-windows glm:x64-windows rapidjson:x64-windows
 
 # Build
+mkdir build && cd build
+cmake .. -G "Visual Studio 17 2022" -A x64 ^
+  -DCMAKE_TOOLCHAIN_FILE=C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake
 cmake --build . --config Release
 
 # Run
-.\Release\TerrainEngine.exe
+.\bin\Release\TerrainEngine.exe
 ```
 
-For detailed build instructions, see [INSTALLATION.md](docs/INSTALLATION.md).
+See [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md) for troubleshooting and detailed setup.
 
 ---
 
