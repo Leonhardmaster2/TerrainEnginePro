@@ -71,6 +71,13 @@ bool TerrainEditor::Initialize() {
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+    // Initialize node graph editor
+    m_NodeGraphEditor = MakeUnique<NodeGraphEditor>();
+    if (!m_NodeGraphEditor->Initialize()) {
+        LOG_ERROR("Failed to initialize node graph editor");
+        return false;
+    }
+
     // Generate initial terrain
     GenerateTerrain();
 
@@ -121,12 +128,16 @@ void TerrainEditor::Render() {
     // Render panels
     RenderViewport3D();
 
-    if (m_State.showParameters) {
+    if (m_State.showParameters && !m_State.useNodeGraph) {
         RenderParametersPanel();
     }
 
     if (m_State.showStats) {
         RenderStatsPanel();
+    }
+
+    if (m_State.showNodeGraph) {
+        m_NodeGraphEditor->Render();
     }
 
     RenderExportPanel();
@@ -155,7 +166,15 @@ void TerrainEditor::RenderMenuBar() {
         if (ImGui::BeginMenu("View")) {
             ImGui::MenuItem("Parameters", nullptr, &m_State.showParameters);
             ImGui::MenuItem("Statistics", nullptr, &m_State.showStats);
+            ImGui::MenuItem("Node Graph", nullptr, &m_State.showNodeGraph);
             ImGui::MenuItem("Grid", nullptr, &m_State.showGrid);
+            ImGui::Separator();
+            if (ImGui::MenuItem("Use Node Graph", nullptr, &m_State.useNodeGraph)) {
+                if (m_State.useNodeGraph) {
+                    // Switch to node graph mode
+                    m_NeedsRegeneration = true;
+                }
+            }
             ImGui::Separator();
             if (ImGui::MenuItem("Reset Camera")) {
                 ResetCamera();
@@ -445,12 +464,24 @@ void TerrainEditor::GenerateTerrain() {
 
     LOG_INFO("Generating terrain...");
 
-    // Generate heightfield
-    m_CurrentHeightfield = m_Generator->GeneratePerlin(
-        m_State.terrainWidth,
-        m_State.terrainHeight,
-        m_State.perlinParams
-    );
+    // Generate heightfield based on mode
+    if (m_State.useNodeGraph) {
+        // Execute node graph
+        if (m_NodeGraphEditor->ExecuteGraph()) {
+            m_CurrentHeightfield = m_NodeGraphEditor->GetResult();
+        } else {
+            LOG_ERROR("Failed to execute node graph");
+            m_IsGenerating = false;
+            return;
+        }
+    } else {
+        // Use simple Perlin generation
+        m_CurrentHeightfield = m_Generator->GeneratePerlin(
+            m_State.terrainWidth,
+            m_State.terrainHeight,
+            m_State.perlinParams
+        );
+    }
 
     if (!m_CurrentHeightfield) {
         LOG_ERROR("Failed to generate heightfield");
