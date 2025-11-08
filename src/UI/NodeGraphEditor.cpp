@@ -84,6 +84,13 @@ void NodeGraphEditor::RenderMenuBar() {
                 ImGui::EndMenu();
             }
 
+            if (ImGui::BeginMenu("Textures")) {
+                if (ImGui::MenuItem("Normal Map")) CreateNodeOfType("NormalMap");
+                if (ImGui::MenuItem("Ambient Occlusion")) CreateNodeOfType("AmbientOcclusion");
+                if (ImGui::MenuItem("Splatmap")) CreateNodeOfType("Splatmap");
+                ImGui::EndMenu();
+            }
+
             if (ImGui::BeginMenu("Combiners")) {
                 if (ImGui::MenuItem("Add")) CreateNodeOfType("Add");
                 if (ImGui::MenuItem("Multiply")) CreateNodeOfType("Multiply");
@@ -400,6 +407,9 @@ Node* NodeGraphEditor::CreateNodeOfType(const String& type) {
     else if (type == "Sharpen") node = m_Graph->CreateNode<SharpenNode>();
     else if (type == "HydraulicErosion") node = m_Graph->CreateNode<HydraulicErosionNode>();
     else if (type == "ThermalErosion") node = m_Graph->CreateNode<ThermalErosionNode>();
+    else if (type == "NormalMap") node = m_Graph->CreateNode<NormalMapNode>();
+    else if (type == "AmbientOcclusion") node = m_Graph->CreateNode<AmbientOcclusionNode>();
+    else if (type == "Splatmap") node = m_Graph->CreateNode<SplatmapNode>();
     else if (type == "Add") node = m_Graph->CreateNode<AddNode>();
     else if (type == "Multiply") node = m_Graph->CreateNode<MultiplyNode>();
     else if (type == "Blend") node = m_Graph->CreateNode<BlendNode>();
