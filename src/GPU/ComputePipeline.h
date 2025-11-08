@@ -31,6 +31,7 @@ public:
     void Bind(VkCommandBuffer cmd);
     void Dispatch(VkCommandBuffer cmd, uint32 groupsX, uint32 groupsY, uint32 groupsZ = 1);
     void SetPushConstants(VkCommandBuffer cmd, const PushConstantData& data);
+    void SetPushConstants(VkCommandBuffer cmd, const void* data, uint32 size);
 
     void BindBuffer(uint32 binding, VkBuffer buffer);
     void UpdateDescriptorSet();

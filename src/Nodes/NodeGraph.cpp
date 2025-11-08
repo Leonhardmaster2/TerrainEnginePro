@@ -204,12 +204,12 @@ void NodeGraph::MarkAllDirty() {
 }
 
 Unique<Heightfield> NodeGraph::GetResult() {
-    if (!m_OutputNode || !m_OutputNode->m_CachedOutput) {
+    if (!m_OutputNode || !m_OutputNode->GetCachedOutput()) {
         return nullptr;
     }
 
     // Return a copy
-    return MakeUnique<Heightfield>(*m_OutputNode->m_CachedOutput);
+    return MakeUnique<Heightfield>(*m_OutputNode->GetCachedOutput());
 }
 
 void NodeGraph::Clear() {

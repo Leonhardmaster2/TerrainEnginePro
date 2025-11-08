@@ -45,7 +45,7 @@ public:
     bool CreateConnection(uint32 outputPinId, uint32 inputPinId);
     void DeleteConnection(uint32 inputPinId);
     bool IsConnected(uint32 pinId) const;
-    bool ConnectPins(Pin* outputPin, Pin* inputPin);
+    bool ConnectPins(NodePin* outputPin, NodePin* inputPin);
 
     // Execution
     bool ExecuteNode(Node* node);

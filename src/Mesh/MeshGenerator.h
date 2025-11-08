@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core/Types.h"
-#include "Heightfield/Heightfield.h"
+#include "Terrain/Heightfield.h"
 #include "Mesh.h"
 
 namespace Terrain {

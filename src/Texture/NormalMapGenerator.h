@@ -3,6 +3,7 @@
 #include "Core/Types.h"
 #include "Terrain/Heightfield.h"
 #include "Texture.h"
+#include <glm/glm.hpp>
 
 namespace Terrain {
 

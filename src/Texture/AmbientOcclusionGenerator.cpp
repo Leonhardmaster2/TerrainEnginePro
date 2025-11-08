@@ -2,6 +2,7 @@
 #include "Core/Logger.h"
 #include <glm/glm.hpp>
 #include <cmath>
+#include <algorithm>
 
 namespace Terrain {
 

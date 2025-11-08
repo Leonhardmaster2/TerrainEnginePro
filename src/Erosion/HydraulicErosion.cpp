@@ -52,7 +52,7 @@ bool HydraulicErosion::Erode(Heightfield& heightfield, const HydraulicErosionPar
     }
 
     // Upload heightfield to GPU
-    heightfield.UploadToGPU();
+    heightfield.UploadToGPU(m_BufferManager);
 
     // Prepare push constants
     struct PushConstants {
@@ -91,7 +91,8 @@ bool HydraulicErosion::Erode(Heightfield& heightfield, const HydraulicErosionPar
     VkCommandBuffer cmd = m_CommandManager->BeginSingleTimeCommands();
 
     m_Pipeline->Bind(cmd);
-    m_Pipeline->UpdateDescriptorSet(0, heightfield.GetGPUBuffer());
+    m_Pipeline->BindBuffer(0, heightfield.GetGPUBuffer().buffer);
+    m_Pipeline->UpdateDescriptorSet();
     m_Pipeline->SetPushConstants(cmd, &pushConstants, sizeof(PushConstants));
 
     // Each invocation simulates one droplet
@@ -116,7 +117,7 @@ bool HydraulicErosion::Erode(Heightfield& heightfield, const HydraulicErosionPar
     m_CommandManager->EndSingleTimeCommands(cmd);
 
     // Download result from GPU
-    heightfield.DownloadFromGPU();
+    heightfield.DownloadFromGPU(m_BufferManager);
 
     return true;
 }

@@ -167,6 +167,10 @@ void ComputePipeline::SetPushConstants(VkCommandBuffer cmd, const PushConstantDa
     vkCmdPushConstants(cmd, m_PipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstantData), &data);
 }
 
+void ComputePipeline::SetPushConstants(VkCommandBuffer cmd, const void* data, uint32 size) {
+    vkCmdPushConstants(cmd, m_PipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, size, data);
+}
+
 void ComputePipeline::BindBuffer(uint32 binding, VkBuffer buffer) {
     if (binding < m_BoundBuffers.size()) {
         m_BoundBuffers[binding] = buffer;

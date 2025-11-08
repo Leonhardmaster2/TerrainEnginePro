@@ -2,6 +2,7 @@
 
 #include "Core/Types.h"
 #include "Terrain/Heightfield.h"
+#include <glm/glm.hpp>
 #include <vector>
 #include <string>
 #include <memory>
@@ -79,6 +80,7 @@ public:
     bool IsDirty() const { return m_Dirty; }
     void MarkDirty() { m_Dirty = true; }
     void MarkClean() { m_Dirty = false; }
+    const Unique<Heightfield>& GetCachedOutput() const { return m_CachedOutput; }
 
     // UI position
     glm::vec2 GetPosition() const { return m_Position; }
