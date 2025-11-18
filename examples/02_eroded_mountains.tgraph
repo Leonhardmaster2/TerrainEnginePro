@@ -1,0 +1,78 @@
+{
+    "version": "1.0",
+    "name": "Eroded Mountains",
+    "description": "Realistic mountain terrain with hydraulic erosion creating valleys and river networks",
+    "nodes": [
+        {
+            "id": 1,
+            "type": "PerlinNoise",
+            "name": "Base Mountains",
+            "position": { "x": 100, "y": 150 },
+            "parameters": {
+                "width": 512,
+                "height": 512,
+                "frequency": 0.008,
+                "amplitude": 1.2,
+                "octaves": 7,
+                "persistence": 0.55,
+                "lacunarity": 2.2,
+                "seed": 12345
+            }
+        },
+        {
+            "id": 2,
+            "type": "HydraulicErosion",
+            "name": "Water Erosion",
+            "position": { "x": 350, "y": 150 },
+            "parameters": {
+                "iterations": 2000,
+                "inertia": 0.3,
+                "sedimentCapacity": 8.0,
+                "minSlope": 0.01,
+                "erodeSpeed": 0.5,
+                "depositSpeed": 0.1,
+                "evaporateSpeed": 0.05,
+                "gravity": 9.81,
+                "maxDropletLifetime": 50.0,
+                "seed": 67890
+            }
+        },
+        {
+            "id": 3,
+            "type": "ThermalErosion",
+            "name": "Gravity Erosion",
+            "position": { "x": 600, "y": 150 },
+            "parameters": {
+                "iterations": 1000,
+                "talusAngle": 35.0,
+                "strength": 0.3
+            }
+        },
+        {
+            "id": 4,
+            "type": "Output",
+            "name": "Final Output",
+            "position": { "x": 850, "y": 150 }
+        }
+    ],
+    "connections": [
+        {
+            "outputNode": 1,
+            "outputPin": "Heightfield",
+            "inputNode": 2,
+            "inputPin": "Input"
+        },
+        {
+            "outputNode": 2,
+            "outputPin": "Output",
+            "inputNode": 3,
+            "inputPin": "Input"
+        },
+        {
+            "outputNode": 3,
+            "outputPin": "Output",
+            "inputNode": 4,
+            "inputPin": "Input"
+        }
+    ]
+}

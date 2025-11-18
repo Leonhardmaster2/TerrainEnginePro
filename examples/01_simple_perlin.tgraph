@@ -1,0 +1,37 @@
+{
+    "version": "1.0",
+    "name": "Simple Perlin Terrain",
+    "description": "Basic Perlin noise terrain - smooth, natural heightfield perfect for gentle hills and valleys",
+    "nodes": [
+        {
+            "id": 1,
+            "type": "PerlinNoise",
+            "name": "Perlin Noise",
+            "position": { "x": 100, "y": 200 },
+            "parameters": {
+                "width": 512,
+                "height": 512,
+                "frequency": 0.01,
+                "amplitude": 1.0,
+                "octaves": 6,
+                "persistence": 0.5,
+                "lacunarity": 2.0,
+                "seed": 42
+            }
+        },
+        {
+            "id": 2,
+            "type": "Output",
+            "name": "Final Output",
+            "position": { "x": 400, "y": 200 }
+        }
+    ],
+    "connections": [
+        {
+            "outputNode": 1,
+            "outputPin": "Heightfield",
+            "inputNode": 2,
+            "inputPin": "Input"
+        }
+    ]
+}

@@ -1,0 +1,91 @@
+{
+    "version": "1.0",
+    "name": "Rocky Peaks",
+    "description": "Sharp, dramatic mountain peaks using ridged noise and voronoi cells",
+    "nodes": [
+        {
+            "id": 1,
+            "type": "RidgedNoise",
+            "name": "Sharp Ridges",
+            "position": { "x": 100, "y": 120 },
+            "parameters": {
+                "width": 512,
+                "height": 512,
+                "frequency": 0.012,
+                "amplitude": 1.5,
+                "octaves": 6,
+                "lacunarity": 2.5,
+                "persistence": 0.4,
+                "ridgeOffset": 0.9,
+                "seed": 54321
+            }
+        },
+        {
+            "id": 2,
+            "type": "VoronoiCells",
+            "name": "Rocky Texture",
+            "position": { "x": 100, "y": 280 },
+            "parameters": {
+                "width": 512,
+                "height": 512,
+                "cellCount": 40,
+                "amplitude": 0.4,
+                "seed": 11111,
+                "invert": false
+            }
+        },
+        {
+            "id": 3,
+            "type": "Add",
+            "name": "Combine",
+            "position": { "x": 350, "y": 200 },
+            "parameters": {
+                "weight1": 0.7,
+                "weight2": 0.3
+            }
+        },
+        {
+            "id": 4,
+            "type": "ThermalErosion",
+            "name": "Sharpen",
+            "position": { "x": 600, "y": 200 },
+            "parameters": {
+                "iterations": 500,
+                "talusAngle": 40.0,
+                "strength": 0.2
+            }
+        },
+        {
+            "id": 5,
+            "type": "Output",
+            "name": "Final Output",
+            "position": { "x": 850, "y": 200 }
+        }
+    ],
+    "connections": [
+        {
+            "outputNode": 1,
+            "outputPin": "Heightfield",
+            "inputNode": 3,
+            "inputPin": "Input1"
+        },
+        {
+            "outputNode": 2,
+            "outputPin": "Heightfield",
+            "inputNode": 3,
+            "inputPin": "Input2"
+        },
+        {
+            "outputNode": 3,
+            "outputPin": "Output",
+            "inputNode": 4,
+            "inputPin": "Input"
+        },
+        {
+            "outputNode": 4,
+            "outputPin": "Output",
+            "inputNode": 5,
+            "inputPin": "Input"
+        }
+    ]
+}
